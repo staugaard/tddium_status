@@ -6,7 +6,14 @@ require 'tddium_status'
 require 'rainbow'
 
 def show
-  TddiumStatus.projects.each do |project|
+  if TddiumStatus.feeds.empty?
+    puts "No feeds have been added to your configuration".inverse
+    puts ""
+    help
+    exit
+  end
+
+  projects = TddiumStatus.projects.each do |project|
     line = "#{project.status} #{project.name}"
     if project.passing?
       line = line.foreground(:green)
@@ -33,6 +40,15 @@ def settings
 end
 
 def add(url, pattern)
+  if url.nil?
+    puts "Usage:  tddium_status add URL REGEX"
+    puts ""
+    puts "Where:"
+    puts " URL         Is the url of the tddium cc feed"
+    puts " REGEX       Is an optional regular expression used to match projects"
+    exit
+  end
+
   require 'uri'
   url = URI.parse(url)
   feed = TddiumStatus.feeds.find { |f| f.url == url }
@@ -49,6 +65,15 @@ def add(url, pattern)
   settings
 end
 
+def help
+  puts "Usage:  tddium_status [COMMAND] OTHER_ARGS"
+  puts ""
+  puts "Commands:"
+  puts " show        Show the current status if your builds"
+  puts " settings    Show the currently configured feeds"
+  puts " add         Add a new feed"
+end
+
 case ARGV[0]
 when nil, 'show'
   show
@@ -57,5 +82,5 @@ when 'settings'
 when 'add'
   add(ARGV[1], ARGV[2])
 else
-  puts "unknown command #{ARGV[0]}"
+  help
 end
