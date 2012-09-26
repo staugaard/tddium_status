@@ -1,0 +1,61 @@
+#!/usr/bin/env ruby
+
+$LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..' , 'lib'))
+
+require 'tddium_status'
+require 'rainbow'
+
+def show
+  TddiumStatus.projects.each do |project|
+    line = "#{project.status} #{project.name}"
+    if project.passing?
+      line = line.foreground(:green)
+    else
+      line = line.foreground(:red)
+    end
+
+    line = line.inverse if project.building?
+
+    puts line
+  end
+end
+
+def settings
+  TddiumStatus.feeds.each do |feed|
+    if feed.patterns
+      feed.patterns.each do |pattern|
+        puts "#{feed.url} #{pattern.inspect}"
+      end
+    else
+      puts feed.url
+    end
+  end
+end
+
+def add(url, pattern)
+  require 'uri'
+  url = URI.parse(url)
+  feed = TddiumStatus.feeds.find { |f| f.url == url }
+  feed ||= TddiumStatus::Feed.new(url)
+
+  if pattern
+    regex = eval(pattern)
+    raise "#{pattern.inspect} is not a valid regex" unless regex.is_a?(Regexp)
+    feed.add_pattern(regex)
+  end
+
+  feed.save
+
+  settings
+end
+
+case ARGV[0]
+when nil, 'show'
+  show
+when 'settings'
+  settings
+when 'add'
+  add(ARGV[1], ARGV[2])
+else
+  puts "unknown command #{ARGV[0]}"
+end
