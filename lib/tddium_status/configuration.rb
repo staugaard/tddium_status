@@ -1,20 +1,21 @@
-require 'yaml/store'
+require 'yaml'
 
 module TddiumStatus
   class Configuration
     def initialize(path = self.class.default_path)
-      @store = YAML::Store.new(path)
+      @path = path
+      @lock = Mutex.new
     end
 
     def feeds
-      @feeds ||= @store.transaction do
-        @store[:feeds] ||= []
+      @feeds ||= transaction do |data|
+        data[:feeds] ||= []
       end
     end
 
     def feeds=(feeds)
-      @store.transaction do
-        @store[:feeds] = feeds || []
+      transaction do |data|
+        data[:feeds] = feeds || []
       end
     end
 
@@ -22,6 +23,17 @@ module TddiumStatus
       feeds = self.feeds
       feeds << feed unless feeds.include?(feed)
       self.feeds = feeds
+    end
+
+    def transaction(&block)
+      @lock.synchronize do
+        data = YAML.load(File.read(@path)) rescue {}
+        result = block.call(data)
+        File.open(@path, "w") do |f|
+          f.write(YAML.dump(data))
+        end
+        result
+      end
     end
 
     def self.default_path
