@@ -21,10 +21,25 @@ module TddiumStatus
     end
 
     def add_pattern(pattern)
-      return if @patterns && @patterns.include?(pattern)
+      return if patterns && patterns.include?(pattern)
       @patterns ||= []
       @patterns << pattern
       expire
+    end
+
+    #this madness is here because macruby cannot deserialize regexes from yaml
+    def patterns
+      return @patterns if @fixed_patterns
+
+      return nil if @patterns.nil?
+
+      @patterns = @patterns.map do |pattern|
+        pattern.is_a?(String) ? eval(pattern) : pattern
+      end
+
+      @fixed_patterns = true
+
+      @patterns
     end
 
     def needs_refresh?
